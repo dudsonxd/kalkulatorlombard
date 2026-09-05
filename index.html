@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PICKLE PAWN &amp; CO. — Rejestr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Biblioteka do generowania obrazków z HTML -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --paper: #EDE3CC;
+    --paper-dark: #E2D5B8;
+    --ink: #2A241C;
+    --ink-soft: #5A5142;
+    --green: #2F4A34;
+    --green-dark: #1B2B1F;
+    --brass: #B08D3F;
+    --brass-light: #D4B876;
+    --red: #8B3A3A;
+    --line: rgba(42,36,28,0.18);
+  }
+
+  *{ box-sizing:border-box; }
+  html, body{ height:100%; margin:0; padding:0; }
+
+  body{
+    color:var(--paper);
+    font-family:'Source Sans 3', sans-serif;
+    min-height:100vh;
+    background:
+      linear-gradient(180deg, rgba(10,14,10,0.60) 0%, rgba(10,14,10,0.75) 100%),
+      url('pickle-logo-bg.jpg') center center / cover no-repeat fixed,
+      #0c120d;
+  }
+
+  .wrap{ max-width:860px; margin:0 auto; padding:24px 20px 80px; }
+
+  .topbar{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px;
+    min-height:40px;
+  }
+
+  .topbar .who{
+    font-size:13px;
+    color:var(--paper);
+    opacity:0.85;
+    text-align:right;
+    line-height:1.3;
+  }
+  .topbar .who b{ color:var(--brass-light); }
+
+  .pill-btn{
+    padding:8px 16px;
+    border-radius:20px;
+    border:1px solid var(--brass-light);
+    background:rgba(12, 18, 13, 0.5);
+    backdrop-filter: blur(4px);
+    color:var(--brass-light);
+    font-family:'Source Sans 3', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .pill-btn:hover{ background:var(--brass-light); color:var(--green-dark); }
+  .pill-btn.solid{ background:var(--brass-light); color:var(--green-dark); }
+  .pill-btn.solid:hover{ background:var(--brass); }
+
+  header.hero{
+    text-align:center;
+    padding: 10px 10px 22px;
+    margin-bottom:28px;
+  }
+
+  h1{
+    font-family:'Special Elite', monospace;
+    font-size:clamp(28px, 5vw, 42px);
+    letter-spacing:1px;
+    color:var(--brass-light);
+    margin:6px 0 4px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+  .tagline{ font-size:15px; color:var(--paper); opacity:0.9; font-style:italic; text-shadow:0 1px 4px rgba(0,0,0,0.8); }
+
+  section{ margin-bottom:26px; }
+
+  .panel{
+    background: rgba(237, 227, 204, 0.85);
+    backdrop-filter: blur(8px);
+    color:var(--ink);
+    border:1px solid rgba(176,141,63,0.5);
+    border-radius:4px;
+    padding:20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .panel h2{ font-family:'Special Elite', monospace; font-size:15px; margin:0; color:var(--green-dark); }
+
+  .gate{ text-align:center; padding:50px 20px; color:var(--paper); }
+  .gate p{ opacity:0.8; margin-bottom:18px; }
+
+  .summary-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; }
+  @media (max-width:640px){ .summary-grid{ grid-template-columns: 1fr; } }
+  .stat{ text-align:center; padding:10px 6px; border-right:1px solid var(--line); }
+  .stat:last-child{ border-right:none; }
+  @media (max-width:640px){
+    .stat{ border-right:none; border-bottom:1px solid var(--line); padding-bottom:14px; }
+    .stat:last-child{ border-bottom:none; }
+  }
+  .stat .num{ font-family:'Special Elite', monospace; font-size:26px; color:var(--green-dark); display:block; }
+  .stat .lbl{ font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); }
+
+  .ledger-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; flex-wrap:wrap; }
+  .ledger-head .actions{ display:flex; gap:8px; align-items:center; }
+
+  .round-btn{
+    width:38px; height:38px; border-radius:50%; border:none;
+    background:var(--green); color:var(--paper); font-size:20px; line-height:1; cursor:pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: transform 0.12s ease, background 0.15s ease;
+  }
+  .round-btn:hover{ background:var(--green-dark); transform: scale(1.06); }
+  .round-btn:active{ transform: scale(0.96); }
+
+  .confirm-btn{
+    padding:9px 16px;
+    border-radius:20px;
+    border:none;
+    background:var(--brass);
+    color:var(--green-dark);
+    font-family:'Special Elite', monospace;
+    font-size:13px;
+    cursor:pointer;
+    transition: background 0.15s ease;
+  }
+  .confirm-btn:hover{ background:var(--brass-light); }
+  .confirm-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  .empty{ text-align:center; padding:40px 20px; color:var(--ink-soft); font-style:italic; border:1px dashed var(--line); grid-column: 1 / -1; }
+
+  .tile-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+  @media (max-width:680px){ .tile-grid{ grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width:420px){ .tile-grid{ grid-template-columns: 1fr; } }
+
+  .tile{
+    position:relative;
+    background: linear-gradient(180deg, rgba(22,28,21,0.97), rgba(10,14,11,0.98));
+    border:1px solid rgba(176,141,63,0.55);
+    border-radius:10px;
+    padding:14px 14px 12px;
+    display:flex; flex-direction:column; gap:6px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(176,141,63,0.08);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .tile:hover{ border-color:var(--brass-light); transform: translateY(-1px); }
+  .tile-num{ font-family:'Special Elite', monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--brass); opacity:0.8; }
+  .tile-name{ font-family:'Special Elite', monospace; font-weight:700; font-size:14px; line-height:1.3; color:var(--brass-light); letter-spacing:0.3px; }
+  .tile-cat{ align-self:flex-start; font-size:9px; text-transform:uppercase; letter-spacing:0.09em; color:var(--brass-light); background:rgba(176,141,63,0.1); border:1px solid rgba(176,141,63,0.45); padding:2px 8px; border-radius:20px; }
+  .tile-desc{ font-size:12px; color:rgba(237,227,204,0.62); line-height:1.4; flex:1; }
+  .tile-by{ font-size:10.5px; color:rgba(237,227,204,0.4); font-style:italic; }
+  .tile-bottom{ display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:8px; border-top:1px solid rgba(176,141,63,0.25); }
+  .tile-price{ font-family:'Special Elite', monospace; font-size:16px; color:var(--brass-light); text-shadow:0 1px 4px rgba(0,0,0,0.5); }
+  .tile-del{ background:none; border:none; color:#c97a7a; font-size:11px; text-decoration:underline; cursor:pointer; padding:0; }
+  .tile-del:hover{ color:#e59a9a; }
+
+  footer{ text-align:center; margin-top:30px; font-size:12px; color:var(--paper); opacity:0.8; text-shadow:0 1px 3px rgba(0,0,0,0.8); }
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(10,14,10,0.78); display:none;
+    align-items:center; justify-content:center; padding:20px; z-index:50; overflow-y:auto;
+    backdrop-filter: blur(4px);
+  }
+  .modal-backdrop.open{ display:flex; }
+
+  .modal{
+    background:rgba(237, 227, 204, 0.96); color:var(--ink); width:100%; max-width:420px; border-radius:3px;
+    padding:22px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); border:1px solid rgba(176,141,63,0.5);
+    margin:auto; position:relative;
+  }
+  .modal.wide{ max-width:680px; }
+  .modal h2{ font-family:'Special Elite', monospace; font-size:16px; color:var(--green-dark); margin:0 0 16px; }
+  .modal h3{ font-family:'Special Elite', monospace; font-size:13px; color:var(--green-dark); margin:22px 0 10px; padding-top:14px; border-top:1px solid var(--line); }
+  .modal h3:first-of-type{ border-top:none; padding-top:0; margin-top:0; }
+
+  .field{ margin-bottom:12px; }
+  label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin-bottom:4px; }
+  input, select, textarea{
+    width:100%; font-family:'Source Sans 3', sans-serif; font-size:14px; padding:9px 10px;
+    border:1px solid var(--ink-soft); border-radius:2px; background:rgba(255,255,255,0.9); color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{ outline:2px solid var(--brass); outline-offset:1px; background:#fff; }
+  textarea{ resize:vertical; min-height:44px; }
+
+  .modal-actions{ display:flex; gap:10px; margin-top:18px; }
+  .btn{ flex:1; padding:11px; border:none; border-radius:2px; font-family:'Special Elite', monospace; font-size:13px; letter-spacing:0.4px; cursor:pointer; }
+  .btn-primary{ background:var(--green); color:var(--paper); }
+  .btn-primary:hover{ background:var(--green-dark); }
+  .btn-secondary{ background:transparent; color:var(--ink-soft); border:1px solid var(--line); }
+  .btn-secondary:hover{ background:rgba(0,0,0,0.05); }
+
+  .error-msg{ font-size:12.5px; color:var(--red); margin-top:6px; min-height:16px; }
+
+  .close-x{
+    position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px;
+    color:var(--ink-soft); cursor:pointer; line-height:1;
+  }
+
+  .inline-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .inline-row input{ flex:1; }
+  .inline-row button{ white-space:nowrap; padding:0 14px; border-radius:2px; border:none; background:var(--green); color:var(--paper); font-family:'Special Elite', monospace; font-size:12px; cursor:pointer; }
+  .inline-row button:hover{ background:var(--green-dark); }
+
+  .role-card{
+    background:rgba(255,255,255,0.5); padding:10px; border:1px solid var(--line); border-radius:3px; margin-bottom:8px;
+  }
+  .role-card-head{ display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:14px; }
+  .role-card-opts{ display:flex; gap:12px; margin-top:8px; font-size:12px; }
+  .role-card-opts label{ display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; text-transform:none; margin:0; }
+
+  .emp-row{
+    display:grid; grid-template-columns: 1.2fr 0.8fr 0.8fr auto; gap:8px; align-items:center;
+    padding:10px; border-bottom:1px solid var(--line); font-size:13px; cursor:pointer;
+    transition: background 0.15s ease;
+  }
+  .emp-row:hover{ background:rgba(47,74,52,0.05); }
+  .emp-row.selected{ background:rgba(176,141,63,0.18); border-left:3px solid var(--brass); }
+  .emp-row .emp-name{ font-weight:700; }
+  .emp-row .emp-email{ font-size:11.5px; color:var(--ink-soft); }
+  .emp-row .emp-earn{ font-family:'Special Elite', monospace; color:var(--green-dark); font-weight:bold; }
+
+  .emp-details-box{
+    margin-top:14px; padding:12px; background:rgba(255,255,255,0.85); border:1px solid var(--line); border-radius:3px; font-size:13px;
+  }
+  .emp-details-box h4{ margin:0 0 8px; font-family:'Special Elite', monospace; color:var(--green-dark); }
+  .history-item{ display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--line); font-size:12px; }
+
+  /* WYGLĄD PARAGONU */
+  .receipt-box {
+    background: #fdfbf7;
+    color: #111;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 20px;
+    border: 1px dashed #333;
+    margin-top: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  .receipt-header { text-align: center; border-bottom: 2px dashed #333; padding-bottom: 10px; margin-bottom: 12px; }
+  .receipt-header h3 { margin: 0; font-family: 'Special Elite', monospace; font-size: 18px; }
+  .receipt-header p { margin: 2px 0; font-size: 11px; color: #444; }
+  .receipt-info { font-size: 12px; margin-bottom: 12px; border-bottom: 1px dashed #ccc; padding-bottom: 8px; }
+  .receipt-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+  .receipt-table th { text-align: left; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .receipt-table td { padding: 4px 0; }
+  .receipt-table .num-col { text-align: center; }
+  .receipt-table .price-col { text-align: right; }
+  .receipt-total { border-top: 2px dashed #333; padding-top: 8px; text-align: right; font-size: 14px; font-weight: bold; }
+
+  .edit-items-list{ border:1px solid var(--line); border-radius:3px; overflow:hidden; max-height:220px; overflow-y:auto; }
+  .edit-item-row{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid var(--line); font-size:13px; background:rgba(255,255,255,0.4); }
+  .edit-item-row:last-child{ border-bottom:none; }
+  .edit-item-row .ei-name{ flex:1; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .edit-item-row .ei-unit{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .edit-item-row .ei-qty{ width:56px; text-align:center; padding:5px 4px; flex:none; }
+  .edit-item-row .ei-sum{ width:70px; text-align:right; font-family:'Special Elite',monospace; color:var(--green-dark); flex:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar" id="topbar"></div>
+
+  <header class="hero">
+    <h1>PICKLE PAWN &amp; CO.</h1>
+    <div class="tagline">rejestr skupu — South Central</div>
+  </header>
+
+  <div id="gate" class="gate" style="display:none;">
+    <p>Zaloguj się, żeby korzystać z rejestru.</p>
+    <button class="pill-btn solid" id="gate-login-btn">Zaloguj się</button>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <section class="panel">
+      <h2>Podsumowanie bieżącej zmiany</h2>
+      <div class="summary-grid" style="margin-top:16px;">
+        <div class="stat">
+          <span class="num" id="stat-total">$0</span>
+          <span class="lbl">Wartość łączna</span>
+        </div>
+        <div class="stat">
+          <span class="num" id="stat-count">0</span>
+          <span class="lbl">Pozycji</span>
+        </div>
+        <div class="stat">
+          <span class="num" id="stat-avg">$0</span>
+          <span class="lbl">Średnia cena</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="ledger-head">
+        <h2>Rejestr przedmiotów</h2>
+        <div class="actions">
+          <button type="button" class="confirm-btn" id="confirm-btn">Zatwierdź moją zmianę</button>
+          <button type="button" class="round-btn" id="open-modal" aria-label="Dodaj pozycję" title="Dodaj pozycję">+</button>
+        </div>
+      </div>
+      <div id="ledger-list" class="tile-grid"></div>
+    </section>
+
+  </div>
+
+  <footer>PICKLE PAWN &amp; CO. — dane synchronizowane na żywo przez Firebase</footer>
+</div>
+
+<!-- MODAL LOGOWANIA -->
+<div class="modal-backdrop" id="login-backdrop">
+  <div class="modal">
+    <h2>Logowanie PIN-em</h2>
+    <form id="login-form-pin">
+      <div class="field">
+        <label for="l-pin">Wpisz swój PIN</label>
+        <input id="l-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="••••" style="font-size:22px; letter-spacing:6px; text-align:center;" required>
+      </div>
+      <div class="error-msg" id="login-error-pin"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="login-cancel">Anuluj</button>
+        <button type="submit" class="btn btn-primary">Zaloguj</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL DODAWANIA POZYCJI -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <h2>Nowa pozycja</h2>
+    <form id="item-form">
+      <div class="field">
+        <label for="f-name">Nazwa przedmiotu</label>
+        <input id="f-name" type="text" placeholder="np. Zegarek kieszonkowy" required>
+      </div>
+      <div class="field">
+        <label for="f-desc">Opis / uwagi</label>
+        <textarea id="f-desc" placeholder="stan, historia, szczegóły..."></textarea>
+      </div>
+      <div class="field">
+        <label for="f-cat">Kategoria</label>
+        <select id="f-cat">
+          <option>Biżuteria</option>
+          <option>Elektronika</option>
+          <option>Broń</option>
+          <option>Pojazdy</option>
+          <option>Kolekcjonerskie</option>
+          <option>Inne</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-price">Cena skupu ($)</label>
+        <input id="f-price" type="number" min="0" step="1" placeholder="0" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="close-modal">Anuluj</button>
+        <button type="submit" class="btn btn-primary">Dodaj</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL PODSUMOWANIA I PARAGONU -->
+<div class="modal-backdrop" id="receipt-backdrop">
+  <div class="modal wide">
+    <button type="button" class="close-x" id="receipt-close">✕</button>
+    <h2>Podsumowanie Transakcji</h2>
+    
+    <div class="field">
+      <label for="ssn-input">SSN Obywatela (opcjonalnie)</label>
+      <input id="ssn-input" type="text" placeholder="np. 12345">
+    </div>
+
+    <div class="field">
+      <label>Pozycje w transakcji (możesz skorygować ilość)</label>
+      <div id="edit-items-list" class="edit-items-list"></div>
+    </div>
+
+    <!-- Poniższy element jest generowany do obrazka PNG -->
+    <div id="receipt-to-print" class="receipt-box">
+      <div class="receipt-header">
+        <h3>Pickle Pawn Shop &amp; Co.</h3>
+        <p>South Central, Los Santos</p>
+      </div>
+      <div class="receipt-info">
+        <div><b>Wystawił:</b> <span id="r-seller"></span></div>
+        <div><b>Nr transakcji:</b> <span id="r-txid"></span></div>
+        <div><b>SSN Klienta:</b> <span id="r-ssn">---</span></div>
+        <div><b>Data:</b> <span id="r-date"></span></div>
+      </div>
+
+      <table class="receipt-table">
+        <thead>
+          <tr>
+            <th>Przedmiot</th>
+            <th class="num-col">Ilość</th>
+            <th class="price-col">Suma</th>
+          </tr>
+        </thead>
+        <tbody id="r-items-body"></tbody>
+      </table>
+
+      <div class="receipt-total">
+        DO ZAPŁATY: <span id="r-total">$0</span>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button type="button" class="btn btn-secondary" id="receipt-cancel-btn">Anuluj</button>
+      <button type="button" class="btn btn-secondary" id="download-receipt-btn">📷 Pobierz obrazek</button>
+      <button type="button" class="btn btn-primary" id="finalize-confirm-btn">Zatwierdź i zapisz</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL ADMINA -->
+<div class="modal-backdrop" id="admin-backdrop">
+  <div class="modal wide">
+    <button type="button" class="close-x" id="admin-close">✕</button>
+    <h2>Panel administracyjny</h2>
+
+    <h3>Rangi i uprawnienia</h3>
+    <div class="inline-row">
+      <input id="new-role-name" type="text" placeholder="Nazwa nowej roli, np. Szef lub Sprzedawca">
+      <button type="button" id="add-role-btn">Dodaj rolę</button>
+    </div>
+    <div id="roles-list"></div>
+
+    <h3>Pracownicy</h3>
+    <div class="field">
+      <label for="ne-name">Imię / nazwa postaci</label>
+      <input id="ne-name" type="text" placeholder="np. Martin Pickle">
+    </div>
+    <div class="field">
+      <label for="ne-pin">PIN logowania (4–6 cyfr)</label>
+      <input id="ne-pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="np. 4821">
+    </div>
+    <div class="field">
+      <label for="ne-role">Rola</label>
+      <select id="ne-role"><option value="">— wybierz rolę —</option></select>
+    </div>
+    <div class="error-msg" id="add-emp-error"></div>
+    <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:14px;" id="add-emp-btn">Dodaj pracownika</button>
+
+    <div id="employees-list"></div>
+
+    <div id="employee-details-container"></div>
+
+    <h3>Integracja z Discordem</h3>
+    <div class="field">
+      <label for="discord-webhook-input">URL webhooka Discord</label>
+      <input id="discord-webhook-input" type="text" placeholder="https://discord.com/api/webhooks/...">
+    </div>
+    <div class="error-msg" id="discord-webhook-status"></div>
+    <button type="button" class="btn btn-primary" style="width:100%; margin-bottom:14px;" id="save-webhook-btn">Zapisz webhook</button>
+
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line); text-align:right;">
+      <span style="font-family:'Special Elite',monospace; color:var(--green-dark);">Łącznie utargowano: <span id="grand-total">$0</span></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBRCWEBmdoRJLwJrMnaEE_WOdLMC60mYk0",
+  authDomain: "pawnshopickle.firebaseapp.com",
+  projectId: "pawnshopickle",
+  storageBucket: "pawnshopickle.firebasestorage.app",
+  messagingSenderId: "406081492924",
+  appId: "1:406081492924:web:6db6979d4f892bb132bdb9"
+};
+
+const PIN_DOMAIN = 'pawnshopickle.local';
+function pinToPassword(pin){ return `Pkl-${pin}-secureCo`; }
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUser = null;   
+let unconfirmedItems = []; 
+let rolesCache = [];       
+let employeesCache = [];   
+let confirmationsCache = []; 
+let selectedEmpId = null;
+let currentTransactionItems = [];
+let currentGroupedItems = {};
+
+let unsubItems = null, unsubRoles = null, unsubEmployees = null, unsubConfirmations = null;
+
+const topbar = document.getElementById('topbar');
+const gate = document.getElementById('gate');
+const appContent = document.getElementById('app-content');
+const gateLoginBtn = document.getElementById('gate-login-btn');
+
+const loginBackdrop = document.getElementById('login-backdrop');
+const loginFormPin = document.getElementById('login-form-pin');
+const loginErrorPin = document.getElementById('login-error-pin');
+const loginCancel = document.getElementById('login-cancel');
+
+const modalBackdrop = document.getElementById('modal-backdrop');
+const itemForm = document.getElementById('item-form');
+const nameInput = document.getElementById('f-name');
+const descInput = document.getElementById('f-desc');
+const catInput = document.getElementById('f-cat');
+const priceInput = document.getElementById('f-price');
+const openModalBtn = document.getElementById('open-modal');
+const closeModalBtn = document.getElementById('close-modal');
+const confirmBtn = document.getElementById('confirm-btn');
+
+const listEl = document.getElementById('ledger-list');
+const statTotal = document.getElementById('stat-total');
+const statCount = document.getElementById('stat-count');
+const statAvg = document.getElementById('stat-avg');
+
+const receiptBackdrop = document.getElementById('receipt-backdrop');
+const receiptClose = document.getElementById('receipt-close');
+const receiptCancelBtn = document.getElementById('receipt-cancel-btn');
+const ssnInput = document.getElementById('ssn-input');
+const finalizeConfirmBtn = document.getElementById('finalize-confirm-btn');
+
+const adminBackdrop = document.getElementById('admin-backdrop');
+const adminClose = document.getElementById('admin-close');
+const newRoleName = document.getElementById('new-role-name');
+const addRoleBtn = document.getElementById('add-role-btn');
+const rolesList = document.getElementById('roles-list');
+const neName = document.getElementById('ne-name');
+const nePin = document.getElementById('ne-pin');
+const neRole = document.getElementById('ne-role');
+const addEmpBtn = document.getElementById('add-emp-btn');
+const addEmpError = document.getElementById('add-emp-error');
+const employeesList = document.getElementById('employees-list');
+const grandTotalEl = document.getElementById('grand-total');
+const discordWebhookInput = document.getElementById('discord-webhook-input');
+const discordWebhookStatus = document.getElementById('discord-webhook-status');
+const saveWebhookBtn = document.getElementById('save-webhook-btn');
+const empDetailsContainer = document.getElementById('employee-details-container');
+
+function money(n){ return '$' + Number(n || 0).toLocaleString('en-US', {maximumFractionDigits:0}); }
+function escapeHtml(str){ const div = document.createElement('div'); div.textContent = str ?? ''; return div.innerHTML; }
+function generateTxId(){ return Math.random().toString(36).substring(2, 7).toUpperCase() + Math.random().toString(36).substring(2, 7).toUpperCase(); }
+
+auth.onAuthStateChanged(async (user) => {
+  cleanupListeners();
+
+  if(!user){
+    currentUser = null;
+    renderTopbar();
+    gate.style.display = 'block';
+    appContent.style.display = 'none';
+    return;
+  }
+
+  const doc = await db.collection('users').doc(user.uid).get();
+  if(!doc.exists){
+    loginErrorPin.textContent = 'To konto nie ma dostępu do aplikacji.';
+    await auth.signOut();
+    return;
+  }
+
+  const data = doc.data();
+  currentUser = { 
+    uid: user.uid, 
+    email: user.email, 
+    name: data.name || user.email, 
+    role: data.role || '',
+    roleId: data.roleId || ''
+  };
+
+  renderTopbar();
+  gate.style.display = 'none';
+  appContent.style.display = 'block';
+  closeLoginModal();
+
+  subscribeItems();
+
+  if(currentUser.role === 'admin' || currentUser.roleId){
+    subscribeRoles();
+    subscribeEmployees();
+    subscribeConfirmations();
+  }
+});
+
+function cleanupListeners(){
+  if(unsubItems) unsubItems();
+  if(unsubRoles) unsubRoles();
+  if(unsubEmployees) unsubEmployees();
+  if(unsubConfirmations) unsubConfirmations();
+  unsubItems = unsubRoles = unsubEmployees = unsubConfirmations = null;
+}
+
+function renderTopbar(){
+  if(!currentUser){
+    topbar.innerHTML = `<button class="pill-btn solid" id="topbar-login">Zaloguj się</button>`;
+    document.getElementById('topbar-login').addEventListener('click', openLoginModal);
+    return;
+  }
+  const roleLabel = currentUser.role === 'admin' ? 'Admin / Szef' : (currentUser.role || 'Pracownik');
+  topbar.innerHTML = `
+    <span class="who"><b>${escapeHtml(currentUser.name)}</b><br>${escapeHtml(roleLabel)}</span>
+    ${currentUser.role === 'admin' ? '<button class="pill-btn" id="topbar-admin">Panel admina</button>' : ''}
+    <button class="pill-btn" id="topbar-logout">Wyloguj</button>
+  `;
+  if(currentUser.role === 'admin'){
+    document.getElementById('topbar-admin').addEventListener('click', openAdminPanel);
+  }
+  document.getElementById('topbar-logout').addEventListener('click', () => auth.signOut());
+}
+
+function openLoginModal(){
+  loginErrorPin.textContent = '';
+  loginBackdrop.classList.add('open');
+  document.getElementById('l-pin').focus();
+}
+function closeLoginModal(){
+  loginBackdrop.classList.remove('open');
+  loginFormPin.reset();
+  loginErrorPin.textContent = '';
+}
+
+gateLoginBtn.addEventListener('click', openLoginModal);
+loginCancel.addEventListener('click', closeLoginModal);
+loginBackdrop.addEventListener('click', (e) => { if(e.target === loginBackdrop) closeLoginModal(); });
+
+loginFormPin.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginErrorPin.textContent = '';
+  const pin = document.getElementById('l-pin').value.trim();
+  if(!/^[0-9]{4,6}$/.test(pin)){
+    loginErrorPin.textContent = 'PIN musi mieć 4–6 cyfr.';
+    return;
+  }
+  try{
+    const pinDoc = await db.collection('pins').doc(pin).get();
+    const email = pinDoc.exists ? pinDoc.data().email : `pin${pin}@${PIN_DOMAIN}`;
+    await auth.signInWithEmailAndPassword(email, pinToPassword(pin));
+  }catch(err){
+    loginErrorPin.textContent = 'Nieprawidłowy PIN.';
+  }
+});
+
+function subscribeItems(){
+  unsubItems = db.collection('items').where('confirmed', '==', false)
+    .onSnapshot((snap) => {
+      unconfirmedItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      unconfirmedItems.sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      renderLedger();
+    }, (err) => console.error(err));
+}
+
+function renderLedger(){
+  const total = unconfirmedItems.reduce((sum, it) => sum + Number(it.price || 0), 0);
+  const count = unconfirmedItems.length;
+  const avg = count ? total / count : 0;
+  statTotal.textContent = money(total);
+  statCount.textContent = count;
+  statAvg.textContent = money(avg);
+
+  const myCount = unconfirmedItems.filter(it => it.createdBy === currentUser?.uid).length;
+  confirmBtn.disabled = myCount === 0;
+
+  if(count === 0){
+    listEl.innerHTML = '<div class="empty">Rejestr jest pusty. Kliknij „+", żeby dodać pierwszą pozycję.</div>';
+    return;
+  }
+
+  listEl.innerHTML = unconfirmedItems.map((it, idx) => {
+    const num = String(idx + 1).padStart(3, '0');
+    const canDelete = it.createdBy === currentUser?.uid || currentUser?.role === 'admin';
+    return `
+      <div class="tile" data-id="${it.id}">
+        <div class="tile-num">#${num}</div>
+        <div class="tile-name">${escapeHtml(it.name)}</div>
+        <div class="tile-cat">${escapeHtml(it.category)}</div>
+        ${it.desc ? `<div class="tile-desc">${escapeHtml(it.desc)}</div>` : ''}
+        <div class="tile-by">dodane przez: ${escapeHtml(it.createdByName || '—')}</div>
+        <div class="tile-bottom">
+          <span class="tile-price">${money(it.price)}</span>
+          ${canDelete ? `<button type="button" class="tile-del" data-id="${it.id}">Usuń</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openModal(){ modalBackdrop.classList.add('open'); nameInput.focus(); }
+function closeModal(){ modalBackdrop.classList.remove('open'); itemForm.reset(); }
+openModalBtn.addEventListener('click', openModal);
+closeModalBtn.addEventListener('click', closeModal);
+modalBackdrop.addEventListener('click', (e) => { if(e.target === modalBackdrop) closeModal(); });
+
+itemForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = nameInput.value.trim();
+  const price = parseFloat(priceInput.value);
+  if(!name || isNaN(price)) return;
+
+  await db.collection('items').add({
+    name,
+    desc: descInput.value.trim(),
+    category: catInput.value,
+    price,
+    confirmed: false,
+    createdBy: currentUser.uid,
+    createdByName: currentUser.name,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  closeModal();
+});
+
+listEl.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.tile-del');
+  if(!btn) return;
+  try{
+    await db.collection('items').doc(btn.dataset.id).delete();
+  }catch(err){
+    alert('Nie można usunąć tej pozycji.');
+  }
+});
+
+/* PODSUMOWANIE I GENEROWANIE PARAGONU */
+confirmBtn.addEventListener('click', () => {
+  currentTransactionItems = unconfirmedItems.filter(it => it.createdBy === currentUser.uid);
+  if(currentTransactionItems.length === 0) return;
+
+  document.getElementById('r-seller').textContent = currentUser.name;
+  document.getElementById('r-txid').textContent = generateTxId();
+  document.getElementById('r-date').textContent = new Date().toLocaleString('pl-PL');
+  ssnInput.value = '';
+  document.getElementById('r-ssn').textContent = '---';
+
+  const grouped = {};
+  currentTransactionItems.forEach(it => {
+    const key = it.name.trim();
+    if(!grouped[key]) grouped[key] = { items: [] };
+    grouped[key].items.push({ id: it.id, price: Number(it.price || 0) });
+  });
+
+  currentGroupedItems = {};
+  Object.keys(grouped).forEach(name => {
+    currentGroupedItems[name] = {
+      items: grouped[name].items,
+      maxCount: grouped[name].items.length,
+      selectedCount: grouped[name].items.length
+    };
+  });
+
+  renderEditItemsList();
+  renderReceiptPreview();
+  receiptBackdrop.classList.add('open');
+});
+
+function sumSelected(name){
+  const g = currentGroupedItems[name];
+  return g.items.slice(0, g.selectedCount).reduce((s, i) => s + i.price, 0);
+}
+
+function renderEditItemsList(){
+  const container = document.getElementById('edit-items-list');
+  container.innerHTML = Object.keys(currentGroupedItems).map(name => {
+    const g = currentGroupedItems[name];
+    const unitPrice = g.items.reduce((s, i) => s + i.price, 0) / g.maxCount;
+    return `
+      <div class="edit-item-row">
+        <span class="ei-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+        <span class="ei-unit">${money(unitPrice)}/szt</span>
+        <input type="number" class="ei-qty" min="0" max="${g.maxCount}" value="${g.selectedCount}" data-name="${escapeHtml(name)}">
+        <span class="ei-sum" data-sum-for="${escapeHtml(name)}">${money(sumSelected(name))}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+document.getElementById('edit-items-list').addEventListener('input', (e) => {
+  const input = e.target.closest('.ei-qty');
+  if(!input) return;
+  const name = input.dataset.name;
+  const g = currentGroupedItems[name];
+  let val = parseInt(input.value, 10);
+  if(isNaN(val) || val < 0) val = 0;
+  if(val > g.maxCount) val = g.maxCount;
+  input.value = val;
+  g.selectedCount = val;
+
+  const sumEl = document.querySelector(`[data-sum-for="${CSS.escape(name)}"]`);
+  if(sumEl) sumEl.textContent = money(sumSelected(name));
+
+  renderReceiptPreview();
+});
+
+function renderReceiptPreview(){
+  const tbody = document.getElementById('r-items-body');
+  tbody.innerHTML = '';
+  let grandTotal = 0;
+
+  Object.keys(currentGroupedItems).forEach(name => {
+    const g = currentGroupedItems[name];
+    if(g.selectedCount <= 0) return;
+    const rowTotal = sumSelected(name);
+    grandTotal += rowTotal;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(name)}</td>
+      <td class="num-col">x${g.selectedCount}</td>
+      <td class="price-col">${money(rowTotal)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('r-total').textContent = money(grandTotal);
+}
+
+document.getElementById('download-receipt-btn').addEventListener('click', async () => {
+  const receiptElement = document.getElementById('receipt-to-print');
+  const canvas = await html2canvas(receiptElement, { scale: 2 });
+  const link = document.createElement('a');
+  link.download = `paragon_${document.getElementById('r-txid').textContent}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+ssnInput.addEventListener('input', (e) => {
+  document.getElementById('r-ssn').textContent = e.target.value.trim() || '---';
+});
+
+function closeReceipt(){ receiptBackdrop.classList.remove('open'); }
+receiptClose.addEventListener('click', closeReceipt);
+receiptCancelBtn.addEventListener('click', closeReceipt);
+
+finalizeConfirmBtn.addEventListener('click', async () => {
+  const ssn = ssnInput.value.trim();
+
+  const selectedItems = [];
+  Object.values(currentGroupedItems).forEach(g => {
+    selectedItems.push(...g.items.slice(0, g.selectedCount));
+  });
+
+  if(selectedItems.length === 0){
+    alert('Wybierz co najmniej jedną pozycję (ilość > 0).');
+    return;
+  }
+
+  finalizeConfirmBtn.disabled = true;
+  finalizeConfirmBtn.textContent = 'Zapisywanie...';
+
+  try {
+    // 1. Generowanie obrazka PNG (bez wymuszania pobrania — tylko do Discorda)
+    const receiptElement = document.getElementById('receipt-to-print');
+    const canvas = await html2canvas(receiptElement, { scale: 2 });
+    const imageBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+
+    // 2. Zapis w Firebase — tylko wybrane ilości
+    const amount = selectedItems.reduce((sum, it) => sum + Number(it.price || 0), 0);
+    const batch = db.batch();
+    selectedItems.forEach(it => {
+      batch.update(db.collection('items').doc(it.id), { confirmed: true });
+    });
+    const confRef = db.collection('confirmations').doc();
+    batch.set(confRef, {
+      employeeId: currentUser.uid,
+      employeeName: currentUser.name,
+      ssn: ssn,
+      txId: document.getElementById('r-txid').textContent,
+      amount,
+      itemCount: selectedItems.length,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+
+    const discordGrouped = {};
+    Object.keys(currentGroupedItems).forEach(name => {
+      const g = currentGroupedItems[name];
+      if(g.selectedCount > 0){
+        discordGrouped[name] = { count: g.selectedCount, totalPrice: sumSelected(name) };
+      }
+    });
+
+    sendDiscordReceipt({
+      seller: currentUser.name,
+      txId: document.getElementById('r-txid').textContent,
+      ssn: ssn,
+      itemsGrouped: discordGrouped,
+      total: amount,
+      itemCount: selectedItems.length,
+      imageBlob: imageBlob
+    });
+
+    receiptBackdrop.classList.remove('open');
+  } catch (err) {
+    alert('Wystąpił błąd podczas zatwierdzania transakcji: ' + err.message);
+  } finally {
+    finalizeConfirmBtn.disabled = false;
+    finalizeConfirmBtn.textContent = 'Zatwierdź i zapisz';
+  }
+});
+
+function openAdminPanel(){
+  adminBackdrop.classList.add('open');
+  loadWebhookSetting();
+}
+function closeAdminPanel(){ adminBackdrop.classList.remove('open'); addEmpError.textContent=''; }
+adminClose.addEventListener('click', closeAdminPanel);
+adminBackdrop.addEventListener('click', (e) => { if(e.target === adminBackdrop) closeAdminPanel(); });
+
+/* ============================================================
+   DISCORD WEBHOOK
+   ============================================================ */
+async function loadWebhookSetting(){
+  discordWebhookStatus.textContent = '';
+  try{
+    const doc = await db.collection('settings').doc('discord').get();
+    discordWebhookInput.value = doc.exists ? (doc.data().webhookUrl || '') : '';
+  }catch(err){
+    console.error(err);
+  }
+}
+
+saveWebhookBtn.addEventListener('click', async () => {
+  const url = discordWebhookInput.value.trim();
+  discordWebhookStatus.textContent = '';
+  if(url && !url.startsWith('https://discord.com/api/webhooks/') && !url.startsWith('https://discordapp.com/api/webhooks/')){
+    discordWebhookStatus.textContent = 'To nie wygląda na poprawny link webhooka Discord.';
+    return;
+  }
+  try{
+    await db.collection('settings').doc('discord').set({ webhookUrl: url }, { merge: true });
+    discordWebhookStatus.style.color = 'var(--green)';
+    discordWebhookStatus.textContent = url ? 'Zapisano.' : 'Webhook wyłączony (puste pole).';
+  }catch(err){
+    discordWebhookStatus.style.color = 'var(--red)';
+    discordWebhookStatus.textContent = 'Nie udało się zapisać: ' + err.message;
+  }
+});
+
+async function sendDiscordReceipt({ seller, txId, ssn, itemsGrouped, total, itemCount, imageBlob }){
+  try{
+    const doc = await db.collection('settings').doc('discord').get();
+    const webhookUrl = doc.exists ? doc.data().webhookUrl : '';
+    if(!webhookUrl) return;
+
+    const itemLines = Object.keys(itemsGrouped).map(name => {
+      const it = itemsGrouped[name];
+      return `• ${name} x${it.count} — ${money(it.totalPrice)}`;
+    }).join('\n') || '—';
+
+    const embed = {
+      title: '🥒 Nowy paragon — PICKLE PAWN & CO.',
+      color: 3407667,
+      fields: [
+        { name: 'Wystawił', value: seller, inline: true },
+        { name: 'Nr transakcji', value: txId, inline: true },
+        { name: 'SSN klienta', value: ssn || '—', inline: true },
+        { name: 'Pozycje', value: itemLines, inline: false },
+        { name: 'Liczba pozycji', value: String(itemCount), inline: true },
+        { name: 'Suma', value: money(total), inline: true }
+      ],
+      timestamp: new Date().toISOString()
+    };
+
+    if(imageBlob){
+      // Załączamy obrazek paragonu i podpinamy go pod embed przez attachment://
+      embed.image = { url: 'attachment://paragon.png' };
+      const formData = new FormData();
+      formData.append('payload_json', JSON.stringify({ embeds: [embed] }));
+      formData.append('files[0]', imageBlob, 'paragon.png');
+      await fetch(webhookUrl, { method: 'POST', body: formData });
+    }else{
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] })
+      });
+    }
+  }catch(err){
+    console.error('Discord webhook error:', err);
+  }
+}
+
+function subscribeRoles(){
+  unsubRoles = db.collection('roles').onSnapshot((snap) => {
+    rolesCache = snap.docs.map(d => ({ id: d.id, permissions: {}, ...d.data() }));
+    rolesCache.sort((a,b) => a.name.localeCompare(b.name));
+    renderRoles();
+    renderRoleSelect();
+    renderEmployees();
+  });
+}
+
+function renderRoles(){
+  if(rolesCache.length === 0){
+    rolesList.innerHTML = '<div class="list-row"><span class="meta">Brak ról — dodaj pierwszą powyżej.</span></div>';
+    return;
+  }
+  rolesList.innerHTML = rolesCache.map(r => `
+    <div class="role-card" data-role-id="${r.id}">
+      <div class="role-card-head">
+        <span>${escapeHtml(r.name)}</span>
+        <button type="button" class="del-link del-role-btn" data-role-id="${r.id}">Usuń</button>
+      </div>
+      <div class="role-card-opts">
+        <label>
+          <input type="checkbox" class="perm-check" data-role-id="${r.id}" data-perm="viewEarnings" ${r.permissions?.viewEarnings ? 'checked' : ''}>
+          Podgląd zarobków pracowników
+        </label>
+      </div>
+    </div>
+  `).join('');
+}
+
+rolesList.addEventListener('change', async (e) => {
+  if(!e.target.classList.contains('perm-check')) return;
+  const roleId = e.target.dataset.roleId;
+  const perm = e.target.dataset.perm;
+  const checked = e.target.checked;
+
+  await db.collection('roles').doc(roleId).set({
+    permissions: { [perm]: checked }
+  }, { merge: true });
+});
+
+rolesList.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.del-role-btn');
+  if(!btn) return;
+  await db.collection('roles').doc(btn.dataset.roleId).delete();
+});
+
+addRoleBtn.addEventListener('click', async () => {
+  const name = newRoleName.value.trim();
+  if(!name) return;
+  await db.collection('roles').add({ name, permissions: { viewEarnings: false } });
+  newRoleName.value = '';
+});
+
+function renderRoleSelect(){
+  neRole.innerHTML = '<option value="">— wybierz rolę —</option>' +
+    rolesCache.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+}
+
+function subscribeEmployees(){
+  unsubEmployees = db.collection('users').onSnapshot((snap) => {
+    employeesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderEmployees();
+  }, (err) => console.error(err));
+}
+
+function subscribeConfirmations(){
+  unsubConfirmations = db.collection('confirmations').onSnapshot((snap) => {
+    confirmationsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderEmployees();
+    renderEmployeeDetails();
+    const grand = confirmationsCache.reduce((s,c) => s + Number(c.amount||0), 0);
+    grandTotalEl.textContent = money(grand);
+  });
+}
+
+function renderEmployees(){
+  if(employeesCache.length === 0){
+    employeesList.innerHTML = '<div class="list-row"><span class="meta">Brak pracowników — dodaj pierwszego powyżej.</span></div>';
+    return;
+  }
+
+  const myRoleDoc = rolesCache.find(r => r.id === currentUser.roleId);
+  const canViewEarnings = currentUser.role === 'admin' || myRoleDoc?.permissions?.viewEarnings;
+
+  employeesList.innerHTML = employeesCache.map(emp => {
+    const roleObj = rolesCache.find(r => r.id === emp.roleId);
+    const roleName = emp.role === 'admin' ? 'Szef (Admin)' : (roleObj ? roleObj.name : '—');
+
+    const earned = confirmationsCache
+      .filter(c => c.employeeId === emp.id)
+      .reduce((s,c) => s + Number(c.amount||0), 0);
+
+    const isSelected = selectedEmpId === emp.id;
+
+    return `
+      <div class="emp-row ${isSelected ? 'selected' : ''}" data-emp-id="${emp.id}">
+        <div>
+          <div class="emp-name">${escapeHtml(emp.name)}</div>
+          <div class="emp-email">PIN: ${escapeHtml(emp.pin || '—')}</div>
+        </div>
+        <div>${escapeHtml(roleName)}</div>
+        <div class="emp-earn">${canViewEarnings ? money(earned) : '***'}</div>
+        <div>
+          <button type="button" class="del-link edit-pin-btn" data-emp-id="${emp.id}" style="color:var(--brass); margin-right:8px;">Zmień PIN</button>
+          <button type="button" class="del-link del-emp-btn" data-emp-id="${emp.id}">Usuń</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+employeesList.addEventListener('click', async (e) => {
+  const pinBtn = e.target.closest('.edit-pin-btn');
+  if(pinBtn){
+    e.stopPropagation();
+    const empId = pinBtn.dataset.empId;
+    const emp = employeesCache.find(x => x.id === empId);
+    if(!emp) return;
+
+    const newPin = prompt('Wpisz nowy PIN dla tego pracownika (4-6 cyfr):');
+    if(!newPin) return;
+    if(!/^[0-9]{4,6}$/.test(newPin)){
+      alert('PIN musi składać się z 4 do 6 cyfr.');
+      return;
+    }
+
+    const newPinRef = db.collection('pins').doc(newPin);
+    const [existingPin, existingUserQuery] = await Promise.all([
+      newPinRef.get(),
+      db.collection('users').where('pin', '==', newPin).limit(1).get()
+    ]);
+    if(existingPin.exists || !existingUserQuery.empty){
+      alert('Ten PIN jest już zajęty przez innego pracownika.');
+      return;
+    }
+
+    // starsze profile (sprzed wprowadzenia puli PIN-ów) nie mają zapisanego
+    // adresu e-mail — da się go jednak odtworzyć, bo był wyliczany ze starego PIN-u
+    const oldEmail = emp.email || `pin${emp.pin}@${PIN_DOMAIN}`;
+
+    let secondaryApp;
+    try{
+      secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary_' + Date.now());
+      const cred = await secondaryApp.auth().signInWithEmailAndPassword(oldEmail, pinToPassword(emp.pin));
+      await cred.user.updatePassword(pinToPassword(newPin));
+      await secondaryApp.auth().signOut();
+      await secondaryApp.delete();
+
+      const batch = db.batch();
+      batch.update(db.collection('users').doc(empId), { pin: newPin, email: oldEmail });
+      batch.delete(db.collection('pins').doc(emp.pin));
+      batch.set(newPinRef, {
+        uid: empId, email: oldEmail, employeeName: emp.name,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await batch.commit();
+
+      alert(`PIN zmieniony na: ${newPin}. Pracownik może się nim zalogować od razu.`);
+    }catch(err){
+      alert('Nie udało się zmienić PIN-u: ' + err.message);
+      if(secondaryApp){ try{ await secondaryApp.delete(); }catch(_){} }
+    }
+    return;
+  }
+
+  const delBtn = e.target.closest('.del-emp-btn');
+  if(delBtn){
+    e.stopPropagation();
+    if(!confirm('Usunąć dostęp tego pracownika do aplikacji? Jego PIN zostanie zwolniony.')) return;
+    const empId = delBtn.dataset.empId;
+    const emp = employeesCache.find(x => x.id === empId);
+
+    const batch = db.batch();
+    batch.delete(db.collection('users').doc(empId));
+    if(emp && emp.pin){
+      batch.delete(db.collection('pins').doc(emp.pin));
+    }
+    await batch.commit();
+
+    if(selectedEmpId === empId) selectedEmpId = null;
+    return;
+  }
+
+  const row = e.target.closest('.emp-row');
+  if(row){
+    selectedEmpId = row.dataset.empId;
+    renderEmployees();
+    renderEmployeeDetails();
+  }
+});
+
+function renderEmployeeDetails(){
+  if(!selectedEmpId){
+    empDetailsContainer.innerHTML = '';
+    return;
+  }
+
+  const emp = employeesCache.find(e => e.id === selectedEmpId);
+  if(!emp){
+    empDetailsContainer.innerHTML = '';
+    return;
+  }
+
+  const myRoleDoc = rolesCache.find(r => r.id === currentUser.roleId);
+  const canViewEarnings = currentUser.role === 'admin' || myRoleDoc?.permissions?.viewEarnings;
+
+  if(!canViewEarnings){
+    empDetailsContainer.innerHTML = `
+      <div class="emp-details-box">
+        <h4>Wybrany pracownik: ${escapeHtml(emp.name)}</h4>
+        <p style="color:var(--red); margin:0;">Nie posiadasz uprawnień do przeglądania zarobków pracowników.</p>
+      </div>`;
+    return;
+  }
+
+  const empConfirmations = confirmationsCache
+    .filter(c => c.employeeId === emp.id)
+    .sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+  const totalEarned = empConfirmations.reduce((s,c) => s + Number(c.amount||0), 0);
+
+  const historyHtml = empConfirmations.length === 0 
+    ? '<p style="font-style:italic; color:var(--ink-soft);">Brak zatwierdzonych wpisów dla tego pracownika.</p>'
+    : empConfirmations.map(c => {
+        const dateStr = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('pl-PL') : 'Rozliczone';
+        const ssnInfo = c.ssn ? ` | SSN: ${c.ssn}` : '';
+        return `
+          <div class="history-item">
+            <span><b>${money(c.amount)}</b> (${c.itemCount} poz.)${ssnInfo} — <small>${dateStr}</small></span>
+          </div>
+        `;
+      }).join('');
+
+  empDetailsContainer.innerHTML = `
+    <div class="emp-details-box">
+      <h4>Szczegóły zarobków: ${escapeHtml(emp.name)}</h4>
+      <p style="margin: 0 0 10px;">Łącznie wygenerował dla firmy: <b>${money(totalEarned)}</b></p>
+      <div style="max-height: 150px; overflow-y: auto;">
+        ${historyHtml}
+      </div>
+    </div>
+  `;
+}
+
+addEmpBtn.addEventListener('click', async () => {
+  addEmpError.textContent = '';
+  const name = neName.value.trim();
+  const pin = nePin.value.trim();
+  const selectedRoleId = neRole.value;
+
+  if(!name || !pin || !selectedRoleId){
+    addEmpError.textContent = 'Wypełnij wszystkie pola.';
+    return;
+  }
+  if(!/^[0-9]{4,6}$/.test(pin)){
+    addEmpError.textContent = 'PIN musi mieć 4–6 cyfr.';
+    return;
+  }
+
+  // sprawdź, czy PIN jest już zajęty — zarówno w nowej puli, jak i u ewentualnych
+  // starszych profili sprzed tej aktualizacji (mają pin zapisany tylko w users)
+  const pinRef = db.collection('pins').doc(pin);
+  const [existingPin, existingUserQuery] = await Promise.all([
+    pinRef.get(),
+    db.collection('users').where('pin', '==', pin).limit(1).get()
+  ]);
+  if(existingPin.exists || !existingUserQuery.empty){
+    addEmpError.textContent = 'Ten PIN jest już zajęty — wybierz inny.';
+    return;
+  }
+
+  const selectedRoleObj = rolesCache.find(r => r.id === selectedRoleId);
+  const isBoss = selectedRoleObj && selectedRoleObj.name.toLowerCase().includes('szef');
+  const roleType = isBoss ? 'admin' : 'user';
+
+  // e-mail wewnętrzny jest losowy (niewidoczny dla pracownika) — dzięki temu
+  // usunięcie profilu i zwolnienie PIN-u nie koliduje ze starym kontem Auth
+  const emailToken = db.collection('users').doc().id;
+  const email = `emp-${emailToken}@${PIN_DOMAIN}`;
+  const pass = pinToPassword(pin);
+
+  let secondaryApp;
+  try{
+    secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary_' + Date.now());
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+
+    const batch = db.batch();
+    batch.set(db.collection('users').doc(uid), {
+      name,
+      pin,
+      email,
+      role: roleType,
+      roleId: selectedRoleId,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.set(pinRef, {
+      uid, email, employeeName: name,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await batch.commit();
+
+    await secondaryApp.auth().signOut();
+    await secondaryApp.delete();
+
+    neName.value = ''; nePin.value = ''; neRole.value = '';
+  }catch(err){
+    addEmpError.textContent = err.code === 'auth/email-already-in-use'
+      ? 'Ten PIN jest już zajęty — wybierz inny.'
+      : 'Nie udało się dodać pracownika: ' + err.message;
+    if(secondaryApp){ try{ await secondaryApp.delete(); }catch(_){} }
+  }
+});
+</script>
+</body>
+</html>
