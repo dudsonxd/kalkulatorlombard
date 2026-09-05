@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PICKLE PAWN & CO. — Rejestr</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #EDE3CC;
+    --paper-dark: #E2D5B8;
+    --ink: #2A241C;
+    --ink-soft: #5A5142;
+    --green: #2F4A34;
+    --green-dark: #223526;
+    --brass: #B08D3F;
+    --brass-light: #D4B876;
+    --red: #8B3A3A;
+    --line: rgba(42,36,28,0.18);
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 34px, var(--line) 35px),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Source Sans 3', sans-serif;
+    min-height:100vh;
+  }
+
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:32px 20px 80px;
+  }
+
+  header{
+    text-align:center;
+    padding-bottom:22px;
+    margin-bottom:28px;
+    border-bottom:3px double var(--ink);
+  }
+
+  header .mark{ font-size:28px; }
+
+  h1{
+    font-family:'Special Elite', monospace;
+    font-size:clamp(28px, 5vw, 40px);
+    letter-spacing:1px;
+    color:var(--green-dark);
+    margin:6px 0 4px;
+  }
+
+  .tagline{
+    font-size:14px;
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+
+  section{ margin-bottom:26px; }
+
+  .panel{
+    background:var(--paper-dark);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:20px;
+    box-shadow: 2px 2px 0 rgba(42,36,28,0.08);
+  }
+
+  .panel h2{
+    font-family:'Special Elite', monospace;
+    font-size:15px;
+    margin:0 0 16px;
+    color:var(--green-dark);
+  }
+
+  .field-row{
+    display:grid;
+    grid-template-columns: 1.3fr 1.5fr 0.7fr 0.9fr;
+    gap:10px;
+    margin-bottom:10px;
+  }
+
+  @media (max-width:640px){
+    .field-row{ grid-template-columns: 1fr 1fr; }
+  }
+
+  label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+
+  input, select, textarea{
+    width:100%;
+    font-family:'Source Sans 3', sans-serif;
+    font-size:14px;
+    padding:9px 10px;
+    border:1px solid var(--ink-soft);
+    border-radius:2px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+
+  input:focus, select:focus, textarea:focus{
+    outline:2px solid var(--brass);
+    outline-offset:1px;
+  }
+
+  textarea{ resize:vertical; min-height:44px; }
+
+  .add-btn{
+    margin-top:6px;
+    width:100%;
+    padding:12px;
+    background:var(--green);
+    color:var(--paper);
+    border:none;
+    border-radius:2px;
+    font-family:'Special Elite', monospace;
+    font-size:14px;
+    letter-spacing:0.5px;
+    cursor:pointer;
+    transition: background 0.15s ease;
+  }
+  .add-btn:hover{ background:var(--green-dark); }
+  .add-btn:active{ transform: translateY(1px); }
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:14px;
+  }
+
+  @media (max-width:640px){
+    .summary-grid{ grid-template-columns: 1fr; }
+  }
+
+  .stat{
+    text-align:center;
+    padding:10px 6px;
+    border-right:1px solid var(--line);
+  }
+  .stat:last-child{ border-right:none; }
+  @media (max-width:640px){
+    .stat{ border-right:none; border-bottom:1px solid var(--line); padding-bottom:14px; }
+    .stat:last-child{ border-bottom:none; }
+  }
+
+  .stat .num{
+    font-family:'Special Elite', monospace;
+    font-size:26px;
+    color:var(--green-dark);
+    display:block;
+  }
+  .stat .lbl{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+  }
+
+  .ledger-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:10px;
+  }
+
+  .ledger-head h2{ margin:0; }
+
+  .empty{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--ink-soft);
+    font-style:italic;
+    border:1px dashed var(--line);
+  }
+
+  .entry{
+    display:flex;
+    gap:14px;
+    padding:14px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .entry:last-child{ border-bottom:none; }
+
+  .entry-num{
+    font-family:'Special Elite', monospace;
+    color:var(--brass);
+    font-size:14px;
+    min-width:44px;
+    padding-top:2px;
+  }
+
+  .entry-body{ flex:1; min-width:0; }
+
+  .entry-top{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:baseline;
+    flex-wrap:wrap;
+  }
+
+  .entry-name{
+    font-weight:700;
+    font-size:16px;
+  }
+
+  .entry-cat{
+    display:inline-block;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--green-dark);
+    background:rgba(47,74,52,0.12);
+    padding:2px 7px;
+    border-radius:20px;
+    margin-left:8px;
+  }
+
+  .entry-price{
+    font-family:'Special Elite', monospace;
+    font-size:17px;
+    color:var(--green-dark);
+    white-space:nowrap;
+  }
+
+  .entry-desc{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin-top:4px;
+    line-height:1.45;
+  }
+
+  .entry-actions{
+    margin-top:8px;
+    display:flex;
+    gap:12px;
+  }
+
+  .entry-actions button{
+    background:none;
+    border:none;
+    font-family:'Source Sans 3', sans-serif;
+    font-size:12px;
+    text-decoration:underline;
+    color:var(--ink-soft);
+    cursor:pointer;
+    padding:0;
+  }
+  .entry-actions button.del{ color:var(--red); }
+  .entry-actions button:hover{ color:var(--ink); }
+  .entry-actions button.del:hover{ color:var(--red); }
+
+  footer{
+    text-align:center;
+    margin-top:30px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="mark">🥒</div>
+    <h1>PICKLE PAWN &amp; CO.</h1>
+    <div class="tagline">rejestr skupu — South Central</div>
+  </header>
+
+  <section class="panel">
+    <h2>Nowa pozycja</h2>
+    <form id="item-form">
+      <div class="field-row">
+        <div>
+          <label for="f-name">Nazwa przedmiotu</label>
+          <input id="f-name" type="text" placeholder="np. Zegarek kieszonkowy" required>
+        </div>
+        <div>
+          <label for="f-desc">Opis / uwagi</label>
+          <input id="f-desc" type="text" placeholder="stan, historia, szczegóły...">
+        </div>
+        <div>
+          <label for="f-cat">Kategoria</label>
+          <select id="f-cat">
+            <option>Biżuteria</option>
+            <option>Elektronika</option>
+            <option>Broń</option>
+            <option>Pojazdy</option>
+            <option>Kolekcjonerskie</option>
+            <option>Inne</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-price">Cena skupu ($)</label>
+          <input id="f-price" type="number" min="0" step="1" placeholder="0" required>
+        </div>
+      </div>
+      <button type="submit" class="add-btn">+ Dodaj do rejestru</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Podsumowanie</h2>
+    <div class="summary-grid">
+      <div class="stat">
+        <span class="num" id="stat-total">$0</span>
+        <span class="lbl">Wartość łączna</span>
+      </div>
+      <div class="stat">
+        <span class="num" id="stat-count">0</span>
+        <span class="lbl">Pozycji w rejestrze</span>
+      </div>
+      <div class="stat">
+        <span class="num" id="stat-avg">$0</span>
+        <span class="lbl">Średnia cena</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="ledger-head">
+      <h2>Rejestr przedmiotów</h2>
+    </div>
+    <div id="ledger-list"></div>
+  </section>
+
+  <footer>PICKLE PAWN &amp; CO. — dane zapisywane lokalnie w tej przeglądarce</footer>
+</div>
+
+<script>
+const STORAGE_KEY = 'picklePawnLedger';
+
+function loadItems(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){
+    return [];
+  }
+}
+
+function saveItems(items){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+let items = loadItems();
+
+const form = document.getElementById('item-form');
+const nameInput = document.getElementById('f-name');
+const descInput = document.getElementById('f-desc');
+const catInput = document.getElementById('f-cat');
+const priceInput = document.getElementById('f-price');
+const listEl = document.getElementById('ledger-list');
+const statTotal = document.getElementById('stat-total');
+const statCount = document.getElementById('stat-count');
+const statAvg = document.getElementById('stat-avg');
+
+function money(n){
+  return '$' + Number(n).toLocaleString('en-US', {maximumFractionDigits:0});
+}
+
+function render(){
+  // summary
+  const total = items.reduce((sum, it) => sum + Number(it.price || 0), 0);
+  const count = items.length;
+  const avg = count ? total / count : 0;
+
+  statTotal.textContent = money(total);
+  statCount.textContent = count;
+  statAvg.textContent = money(avg);
+
+  // list
+  if(count === 0){
+    listEl.innerHTML = '<div class="empty">Rejestr jest pusty. Dodaj pierwszą pozycję powyżej.</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map((it, idx) => {
+    const num = String(idx + 1).padStart(3, '0');
+    return `
+      <div class="entry" data-id="${it.id}">
+        <div class="entry-num">#${num}</div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <div class="entry-name">${escapeHtml(it.name)}<span class="entry-cat">${escapeHtml(it.category)}</span></div>
+            <div class="entry-price">${money(it.price)}</div>
+          </div>
+          ${it.desc ? `<div class="entry-desc">${escapeHtml(it.desc)}</div>` : ''}
+          <div class="entry-actions">
+            <button type="button" class="del" data-action="delete" data-id="${it.id}">Usuń</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = nameInput.value.trim();
+  const price = parseFloat(priceInput.value);
+  if(!name || isNaN(price)) return;
+
+  items.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    name,
+    desc: descInput.value.trim(),
+    category: catInput.value,
+    price
+  });
+
+  saveItems(items);
+  render();
+  form.reset();
+  nameInput.focus();
+});
+
+listEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action="delete"]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  items = items.filter(it => it.id !== id);
+  saveItems(items);
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
